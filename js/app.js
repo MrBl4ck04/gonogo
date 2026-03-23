@@ -170,12 +170,20 @@ async function submitForm() {
     showLoading();
 
     try {
-        // Step 1: Check if pre-approved
+        // Paso 1: Calcular nivel de riesgo inicial
         await animateLoadingStep(1);
+        const riskScore = calculateRiskScore(formData);
+
+        const hasSensitiveData = formData.dataTypes.some(t =>
+            ['sensible', 'confidencial', 'financiero', 'personal'].includes(t)
+        );
+
+        // Paso 2: Verificar si es herramienta pre-aprobada
+        await animateLoadingStep(2);
         const preApproved = checkPreApproved(formData.aiTool);
 
-        if (preApproved) {
-            await animateLoadingStep(2);
+        // ¡REGLA ROBUSTA 1!: Una herramienta pre-aprobada NO puede auto-aprobarse si involucra datos sensibles o si su puntaje total exige revisión manual.
+        if (preApproved && !hasSensitiveData && riskScore.totalScore < CONFIG.thresholds.manualReviewMinScore) {
             await animateLoadingStep(3);
             await animateLoadingStep(4);
             hideLoading();
@@ -183,21 +191,17 @@ async function submitForm() {
             return;
         }
 
-        // Step 2: Calculate risk score
-        await animateLoadingStep(2);
-        const riskScore = calculateRiskScore(formData);
-
-        // Step 3: AI Analysis (if configured) or rule-based
+        // Paso 3: Análisis basado en reglas (o IA si estuviera activa)
         await animateLoadingStep(3);
         let analysis;
 
-        if (CONFIG.ai.provider !== 'none' && CONFIG.ai.apiKey) {
+        if (CONFIG.ai && CONFIG.ai.provider !== 'none' && CONFIG.ai.apiKey) {
             analysis = await getAIAnalysis(formData, riskScore);
         } else {
             analysis = getRuleBasedAnalysis(formData, riskScore);
         }
 
-        // Step 4: Generate result
+        // Paso 4: Generar resultado
         await animateLoadingStep(4);
         await sleep(500);
         hideLoading();
@@ -403,58 +407,76 @@ function getRuleBasedAnalysis(formData, riskScore) {
     const hasSensitiveData = formData.dataTypes.some(t =>
         ['sensible', 'confidencial', 'financiero', 'personal'].includes(t)
     );
+    const hasInternalData = formData.dataTypes.includes('interno');
     const hasOnlyPublicData = formData.dataTypes.every(t => t === 'publico');
+    const isPreApproved = checkPreApproved(formData.aiTool);
 
     let decision, riskLevel, analysis, reasons, recommendations, alternatives;
 
+    // Regla 1: Datos Sensibles siempre derivan a Revisión (Sin importar la herramienta)
     if (hasSensitiveData) {
         decision = 'REVIEW';
         riskLevel = riskScore.maxLevel;
-        analysis = `La solicitud de uso de "${formData.aiTool}" involucra datos sensibles o confidenciales, lo cual requiere una revisión manual por parte del equipo de Seguridad de la Información antes de su aprobación. Se evaluarán las políticas de privacidad de la herramienta y su cumplimiento normativo.`;
+        analysis = `La solicitud involucra datos sensibles, personales, financieros o confidenciales. Por normativas de seguridad, se requiere una revisión humana exhaustiva de la herramienta "${formData.aiTool}" antes de su uso.`;
         reasons = [
-            'La solicitud involucra datos sensibles, personales, financieros o confidenciales',
-            'Se requiere verificar las políticas de privacidad y manejo de datos de la herramienta',
-            'Necesaria evaluación de cumplimiento normativo y regulatorio'
+            'Procesamiento de datos con clasificación de riesgo alta o crítica',
+            'Prevención de fuga de información (Data Loss Prevention)',
+            'Cumplimiento normativo y evaluación de Términos de Servicio (ToS)'
         ];
         recommendations = [
-            'No ingresar datos sensibles hasta recibir aprobación formal',
-            'Preparar documentación sobre las políticas de privacidad de la herramienta',
-            'Considerar si el caso de uso puede adaptarse para usar solo datos públicos'
+            'Bajo ninguna circunstancia ingresar estos datos hasta obtener el GO formal',
+            'Documentar qué controles de privacidad ofrece la herramienta solicitada',
+            'Explorar si el proceso puede realizarse anonimizando los datos previamente'
         ];
-        alternatives = 'Evaluar si ChatGPT o Google Gemini (herramientas aprobadas) pueden cubrir el caso de uso sin necesidad de datos sensibles.';
+        alternatives = 'Consultar al equipo de Seguridad si herramientas corporativas aprobadas pueden realizar esta tarea de forma on-premise.';
 
-    } else if (hasOnlyPublicData && riskScore.totalScore <= CONFIG.thresholds.autoApproveMaxScore) {
+    // Regla 2: Herramientas Nuevas/No Aprobadas pidiendo leer Datos Internos de la empresa
+    } else if (!isPreApproved && hasInternalData) {
+        decision = 'REVIEW';
+        riskLevel = 'medio';
+        analysis = `La herramienta "${formData.aiTool}" no se encuentra en el catálogo oficial y solicitas procesar datos internos de la compañía. Se debe analizar la política de retención de datos de esta IA para no exponer nuestra propiedad intelectual.`;
+        reasons = [
+            'Herramienta no categorizada o no certificada por el departamento de Seguridad',
+            'Uso de información empresarial u operativa (Riesgo de entrenamiento no autorizado de modelos)',
+            'Necesidad de validar que la IA no usa nuestros prompts para entrenar sus versiones públicas'
+        ];
+        recommendations = [
+            'Verificar si existe una política opt-out de entrenamiento en esta herramienta',
+            'Aguardar evaluación de licenciamiento corporativo'
+        ];
+        alternatives = 'Evaluaremos usar ChatGPT o Google Gemini Enterprise (si aplican) para procesar estos documentos internos de manera segura.';
+
+    // Regla 3: Herramienta Desconocida pidiendo solo Datos Públicos
+    } else if (!isPreApproved && hasOnlyPublicData && riskScore.totalScore <= CONFIG.thresholds.autoApproveMaxScore) {
         decision = 'GO';
         riskLevel = 'bajo';
-        analysis = `La solicitud de uso de "${formData.aiTool}" para ${formData.aiCategory.toLowerCase()} con datos públicos presenta un nivel de riesgo bajo. El caso de uso es legítimo y no involucra información sensible de la empresa.`;
+        analysis = `La herramienta "${formData.aiTool}" no está formalmente aprobada para uso corporativo, pero como solo procesará Información Pública, el riesgo para la organización es mínimo. Aprobado bajo tu responsabilidad.`;
         reasons = [
-            'Solo se manejarán datos de carácter público',
-            'El caso de uso es pertinente para las funciones del solicitante',
-            'El nivel de riesgo calculado es bajo'
+            'Ausencia total de datos empresariales, internos o de clientes',
+            'Puntaje de impacto operativo muy bajo en nuestro modelo de evaluación'
         ];
         recommendations = [
-            'Mantener el uso limitado a datos públicos como se declaró',
-            'No compartir credenciales corporativas en la herramienta',
-            'Reportar cualquier incidente o comportamiento inusual'
+            'NO utilizar tu cuenta de correo corporativo para registrarte si no es estrictamente necesario',
+            'Usar contraseñas únicas y robustas',
+            'Cualquier alteración al caso de uso requerirá una nueva solicitud formal'
         ];
         alternatives = '';
 
+    // Regla 4: Casos extra / Fallback (Alto uso, Alcance grande, etc.)
     } else {
         decision = 'REVIEW';
-        riskLevel = riskScore.riskCategory === 'critical' ? 'critico' :
+        riskLevel = riskScore.riskCategory === 'critical' ? 'critico' : 
                      riskScore.riskCategory === 'high' ? 'alto' : 'medio';
-        analysis = `La solicitud de uso de "${formData.aiTool}" requiere una evaluación adicional por el equipo de Seguridad de la Información. El tipo de datos y/o el alcance del uso necesitan ser revisados antes de otorgar la aprobación.`;
+        analysis = `Tu solicitud para usar "${formData.aiTool}" requiere evaluación manual debido a su nivel de riesgo global (Alcance operativo, Frecuencia, o Complejidad del caso).`;
         reasons = [
-            'La herramienta no se encuentra en la lista de herramientas pre-aprobadas',
-            'El tipo de datos o alcance de uso requiere evaluación adicional',
-            'Se necesita verificar la idoneidad de la herramienta para el caso de uso propuesto'
+            'El coeficiente de riesgo operativo superó el límite de auto-aprobación',
+            'Validación requerida de impacto para el modelo de procesos establecido'
         ];
         recommendations = [
-            'Esperar la respuesta del equipo de Seguridad de la Información',
-            'Mientras tanto, usar las herramientas aprobadas (ChatGPT, Gemini) si es posible',
-            'Tener lista la documentación de la herramienta por si es solicitada'
+            'Proveer al equipo de seguridad de más casos de uso de esta herramienta si se te solicita',
+            'Revisar si es necesaria una licencia corporativa o presupuesto'
         ];
-        alternatives = 'Considerar usar ChatGPT o Google Gemini como alternativas ya aprobadas.';
+        alternatives = '';
     }
 
     return { decision, riskLevel, analysis, reasons, recommendations, alternatives };
@@ -757,36 +779,14 @@ Condiciones de uso:
 Sistema GO/NO-GO - Red Enlace`;
 }
 
-async function sendEmailAutomatic(toEmail, subject, body, fromName) {
-    try {
-        const response = await fetch(`https://formsubmit.co/ajax/${toEmail}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                name: fromName || 'Sistema GO/NO-GO',
-                _subject: subject,
-                message: body,
-                _template: 'box'
-            })
-        });
 
-        const data = await response.json();
-        return data.success === 'true' || data.success === true;
-    } catch (error) {
-        console.warn('FormSubmit send failed:', error);
-        return false;
-    }
-}
 
 function sendViaMailto(toEmail, ccEmail, subject, body) {
-    const params = new URLSearchParams();
-    if (ccEmail) params.set('cc', ccEmail);
-    params.set('subject', subject);
-    params.set('body', body);
-    window.location.href = `mailto:${toEmail}?${params.toString()}`;
+    let params = `subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    if (ccEmail) {
+        params += `&cc=${encodeURIComponent(ccEmail)}`;
+    }
+    window.location.href = `mailto:${encodeURIComponent(toEmail)}?${params}`;
 }
 
 async function sendToSecurityTeam() {
@@ -798,44 +798,19 @@ async function sendToSecurityTeam() {
     const subject = `[GO/NO-GO] Solicitud de Revisión - ${formData.aiTool} - ${requestId}`;
     const body = buildEmailBody(formData, analysis, riskScore, requestId, 'review');
 
-    showToast('Enviando solicitud a Seguridad de la Información...', 'info');
-    const sent = await sendEmailAutomatic(
-        CONFIG.company.securityEmail,
-        subject,
-        body,
-        formData.fullName
-    );
-
-    if (sent) {
-        showToast('Solicitud enviada exitosamente a ' + CONFIG.company.securityEmail, 'success');
-    } else {
-        // Fallback to mailto
-        sendViaMailto(CONFIG.company.securityEmail, formData.email, subject, body);
-        showToast('Se abrió tu cliente de correo para enviar la solicitud', 'info');
-    }
+    sendViaMailto(CONFIG.company.securityEmail, formData.email, subject, body);
+    showToast('Se abrió tu cliente de correo (ej. Outlook) para enviar la solicitud. Por favor, dale a "Enviar".', 'info');
 }
 
 async function sendEmailNotification(type) {
     const formData = window._lastFormData || collectFormData();
     const requestId = window._lastRequestId || generateRequestId();
 
-    const subject = `[GO/NO-GO] Solicitud Aprobada - ${formData.aiTool} - ${requestId}`;
+    const subject = `[GO/NO-GO] Comprobante de Aprobación - ${formData.aiTool} - ${requestId}`;
     const body = buildEmailBody(formData, {}, {}, requestId, 'approved');
 
-    showToast('Enviando comprobante...', 'info');
-    const sent = await sendEmailAutomatic(
-        formData.email,
-        subject,
-        body,
-        'Sistema GO/NO-GO - Red Enlace'
-    );
-
-    if (sent) {
-        showToast('Comprobante enviado exitosamente a ' + formData.email, 'success');
-    } else {
-        sendViaMailto(formData.email, '', subject, body);
-        showToast('Se abrió tu cliente de correo con el comprobante', 'info');
-    }
+    sendViaMailto(formData.email, '', subject, body);
+    showToast('Se abrió tu cliente de correo para enviarte el comprobante', 'info');
 }
 
 // ─────────────────────────────────────────
