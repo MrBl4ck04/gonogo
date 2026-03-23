@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GO / NO-GO | Evaluación de Soluciones IA</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- Background decoration -->
+    <div class="bg-decoration">
+        <div class="bg-circle bg-circle-1"></div>
+        <div class="bg-circle bg-circle-2"></div>
+        <div class="bg-circle bg-circle-3"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">
+                    <img src="ATC Red Enlace logo.webp" alt="Red Enlace">
+                </div>
+                <div class="logo-text">
+                    <h1>GO <span class="separator">/</span> NO-GO</h1>
+                    <p>Evaluación de Soluciones de IA</p>
+                </div>
+            </div>
+            <div class="header-badge">
+                <i class="fas fa-shield-halved"></i>
+                <span>Más fácil, más seguro</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Progress Steps -->
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="steps">
+                <div class="step active" data-step="1">
+                    <div class="step-circle">1</div>
+                    <span>Solicitante</span>
+                </div>
+                <div class="step" data-step="2">
+                    <div class="step-circle">2</div>
+                    <span>Herramienta IA</span>
+                </div>
+                <div class="step" data-step="3">
+                    <div class="step-circle">3</div>
+                    <span>Uso y Datos</span>
+                </div>
+                <div class="step" data-step="4">
+                    <div class="step-circle">4</div>
+                    <span>Resultado</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Container -->
+        <div class="form-container">
+            <form id="gonogoForm" novalidate>
+
+                <!-- Step 1: Información del Solicitante -->
+                <div class="form-step active" id="step1">
+                    <div class="step-header">
+                        <div class="step-icon">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <div>
+                            <h2>Información del Solicitante</h2>
+                            <p>Cuéntanos sobre ti y tu área de trabajo</p>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="fullName">
+                                <i class="fas fa-user"></i> Nombre completo
+                            </label>
+                            <input type="text" id="fullName" name="fullName" placeholder="Ej: Juan Pérez López" required>
+                            <span class="error-message" id="fullNameError"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">
+                                <i class="fas fa-envelope"></i> Correo corporativo
+                            </label>
+                            <input type="email" id="email" name="email" placeholder="usuario@redenlace.com.bo" required>
+                            <span class="error-message" id="emailError"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="department">
+                                <i class="fas fa-building"></i> Departamento / Área
+                            </label>
+                            <select id="department" name="department" required>
+                                <option value="">Selecciona tu departamento</option>
+                                <option value="Tecnología">Tecnología</option>
+                                <option value="Operaciones">Operaciones</option>
+                                <option value="Comercial">Comercial</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="Recursos Humanos">Recursos Humanos</option>
+                                <option value="Finanzas">Finanzas</option>
+                                <option value="Legal">Legal / Cumplimiento</option>
+                                <option value="Seguridad de la Información">Seguridad de la Información</option>
+                                <option value="Gerencia">Gerencia</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                            <span class="error-message" id="departmentError"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="position">
+                                <i class="fas fa-id-badge"></i> Cargo
+                            </label>
+                            <input type="text" id="position" name="position" placeholder="Ej: Analista de Datos" required>
+                            <span class="error-message" id="positionError"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <div></div>
+                        <button type="button" class="btn btn-primary" onclick="nextStep(1)">
+                            Siguiente <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Herramienta de IA -->
+                <div class="form-step" id="step2">
+                    <div class="step-header">
+                        <div class="step-icon">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div>
+                            <h2>Herramienta de IA Solicitada</h2>
+                            <p>Información sobre la solución de IA que deseas utilizar</p>
+                        </div>
+                    </div>
+
+                    <!-- Pre-approved notice -->
+                    <div class="info-banner" id="approvedBanner" style="display: none;">
+                        <div class="banner-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="banner-content">
+                            <strong>¡Herramienta Pre-aprobada!</strong>
+                            <p>Esta herramienta ya está autorizada para uso general en la empresa. Completa el formulario para registrar tu solicitud.</p>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label for="aiTool">
+                                <i class="fas fa-wand-magic-sparkles"></i> Nombre de la herramienta de IA
+                            </label>
+                            <input type="text" id="aiTool" name="aiTool" placeholder="Ej: ChatGPT, Gemini, Claude, Copilot, Midjourney..." required autocomplete="off" list="aiSuggestions">
+                            <datalist id="aiSuggestions">
+                                <option value="ChatGPT (OpenAI)">
+                                <option value="Google Gemini">
+                                <option value="Claude (Anthropic)">
+                                <option value="Microsoft Copilot">
+                                <option value="GitHub Copilot">
+                                <option value="Midjourney">
+                                <option value="DALL-E">
+                                <option value="Stable Diffusion">
+                                <option value="Perplexity AI">
+                                <option value="Jasper AI">
+                                <option value="Notion AI">
+                                <option value="Grammarly AI">
+                                <option value="DeepL">
+                                <option value="Synthesia">
+                                <option value="Runway ML">
+                                <option value="Otro">
+                            </datalist>
+                            <span class="error-message" id="aiToolError"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="aiUrl">
+                                <i class="fas fa-link"></i> URL / Sitio web de la herramienta
+                            </label>
+                            <input type="url" id="aiUrl" name="aiUrl" placeholder="https://ejemplo.com">
+                            <span class="error-message" id="aiUrlError"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="aiCategory">
+                                <i class="fas fa-tags"></i> Categoría de la herramienta
+                            </label>
+                            <select id="aiCategory" name="aiCategory" required>
+                                <option value="">Selecciona una categoría</option>
+                                <option value="Texto/Chat">Generación de texto / Chatbot</option>
+                                <option value="Código">Asistente de código / Programación</option>
+                                <option value="Imagen">Generación de imágenes</option>
+                                <option value="Audio/Voz">Audio / Voz / Transcripción</option>
+                                <option value="Video">Generación / Edición de video</option>
+                                <option value="Datos/Análisis">Análisis de datos</option>
+                                <option value="Documentos">Gestión de documentos</option>
+                                <option value="Traducción">Traducción</option>
+                                <option value="Automatización">Automatización de procesos</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                            <span class="error-message" id="aiCategoryError"></span>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="aiVersion">
+                                <i class="fas fa-code-branch"></i> Versión o plan (si aplica)
+                            </label>
+                            <input type="text" id="aiVersion" name="aiVersion" placeholder="Ej: GPT-4, Plan Enterprise, versión gratuita...">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="prevStep(2)">
+                            <i class="fas fa-arrow-left"></i> Anterior
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="nextStep(2)">
+                            Siguiente <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Caso de Uso y Datos -->
+                <div class="form-step" id="step3">
+                    <div class="step-header">
+                        <div class="step-icon">
+                            <i class="fas fa-clipboard-check"></i>
+                        </div>
+                        <div>
+                            <h2>Caso de Uso y Clasificación de Datos</h2>
+                            <p>Detalla cómo planeas usar la herramienta y qué tipo de información manejarás</p>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label for="useCase">
+                                <i class="fas fa-bullseye"></i> ¿Para qué necesitas esta herramienta? <span class="required">*</span>
+                            </label>
+                            <textarea id="useCase" name="useCase" rows="4" placeholder="Describe detalladamente el caso de uso. Ej: Necesito generar resúmenes automáticos de reuniones semanales del equipo de desarrollo para documentar acuerdos y tareas asignadas..." required></textarea>
+                            <span class="char-count"><span id="useCaseCount">0</span>/500</span>
+                            <span class="error-message" id="useCaseError"></span>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="expectedBenefit">
+                                <i class="fas fa-chart-line"></i> Beneficio esperado
+                            </label>
+                            <textarea id="expectedBenefit" name="expectedBenefit" rows="3" placeholder="¿Qué mejora o eficiencia esperas lograr? Ej: Reducir el tiempo de documentación de 2 horas a 15 minutos por semana..."></textarea>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="frequency">
+                                <i class="fas fa-clock"></i> Frecuencia de uso estimada
+                            </label>
+                            <select id="frequency" name="frequency" required>
+                                <option value="">Selecciona la frecuencia</option>
+                                <option value="Diario">Diario</option>
+                                <option value="Varias veces por semana">Varias veces por semana</option>
+                                <option value="Semanal">Semanal</option>
+                                <option value="Quincenal">Quincenal</option>
+                                <option value="Mensual">Mensual</option>
+                                <option value="Ocasional">Ocasional / Por proyecto</option>
+                            </select>
+                            <span class="error-message" id="frequencyError"></span>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label>
+                                <i class="fas fa-database"></i> ¿Qué tipo de datos ingresarás a la herramienta? <span class="required">*</span>
+                            </label>
+                            <div class="checkbox-grid">
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="dataType" value="publico">
+                                    <span class="checkbox-custom"></span>
+                                    <span class="checkbox-label">
+                                        <strong>Información pública</strong>
+                                        <small>Datos disponibles públicamente, sin restricción</small>
+                                    </span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="dataType" value="interno">
+                                    <span class="checkbox-custom"></span>
+                                    <span class="checkbox-label">
+                                        <strong>Información interna</strong>
+                                        <small>Documentos, procesos o datos internos de la empresa</small>
+                                    </span>
+                                </label>
+                                <label class="checkbox-item warning">
+                                    <input type="checkbox" name="dataType" value="personal">
+                                    <span class="checkbox-custom"></span>
+                                    <span class="checkbox-label">
+                                        <strong>Datos personales</strong>
+                                        <small>Nombres, emails, teléfonos, direcciones de personas</small>
+                                    </span>
+                                </label>
+                                <label class="checkbox-item warning">
+                                    <input type="checkbox" name="dataType" value="financiero">
+                                    <span class="checkbox-custom"></span>
+                                    <span class="checkbox-label">
+                                        <strong>Datos financieros</strong>
+                                        <small>Cuentas, transacciones, estados financieros</small>
+                                    </span>
+                                </label>
+                                <label class="checkbox-item danger">
+                                    <input type="checkbox" name="dataType" value="confidencial">
+                                    <span class="checkbox-custom"></span>
+                                    <span class="checkbox-label">
+                                        <strong>Información confidencial</strong>
+                                        <small>Estrategias, contratos, propiedad intelectual</small>
+                                    </span>
+                                </label>
+                                <label class="checkbox-item danger">
+                                    <input type="checkbox" name="dataType" value="sensible">
+                                    <span class="checkbox-custom"></span>
+                                    <span class="checkbox-label">
+                                        <strong>Datos sensibles / regulados</strong>
+                                        <small>Datos de tarjetas, credenciales, datos médicos, etc.</small>
+                                    </span>
+                                </label>
+                            </div>
+                            <span class="error-message" id="dataTypeError"></span>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label>
+                                <i class="fas fa-users"></i> ¿Quiénes usarán esta herramienta?
+                            </label>
+                            <div class="radio-grid">
+                                <label class="radio-item">
+                                    <input type="radio" name="userScope" value="individual" required>
+                                    <span class="radio-custom"></span>
+                                    <span>Solo yo</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="userScope" value="equipo">
+                                    <span class="radio-custom"></span>
+                                    <span>Mi equipo / área</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="userScope" value="departamento">
+                                    <span class="radio-custom"></span>
+                                    <span>Varios departamentos</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="userScope" value="empresa">
+                                    <span class="radio-custom"></span>
+                                    <span>Toda la empresa</span>
+                                </label>
+                            </div>
+                            <span class="error-message" id="userScopeError"></span>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label>
+                                <i class="fas fa-credit-card"></i> ¿Requiere licencia o pago?
+                            </label>
+                            <div class="radio-grid">
+                                <label class="radio-item">
+                                    <input type="radio" name="requiresPayment" value="gratuito" required>
+                                    <span class="radio-custom"></span>
+                                    <span>No, es gratuita</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="requiresPayment" value="freemium">
+                                    <span class="radio-custom"></span>
+                                    <span>Freemium (usaré el plan gratuito)</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="requiresPayment" value="pago">
+                                    <span class="radio-custom"></span>
+                                    <span>Sí, requiere pago</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="additionalNotes">
+                                <i class="fas fa-sticky-note"></i> Notas adicionales (opcional)
+                            </label>
+                            <textarea id="additionalNotes" name="additionalNotes" rows="3" placeholder="Cualquier información adicional que consideres relevante para la evaluación..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="prevStep(3)">
+                            <i class="fas fa-arrow-left"></i> Anterior
+                        </button>
+                        <button type="button" class="btn btn-primary btn-submit" onclick="submitForm()">
+                            <i class="fas fa-paper-plane"></i> Enviar Solicitud
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 4: Resultado -->
+                <div class="form-step" id="step4">
+                    <!-- Content will be dynamically inserted -->
+                </div>
+            </form>
+        </div>
+
+        <!-- Footer info -->
+        <div class="footer-info">
+            <p><i class="fas fa-lock"></i> Tu solicitud es evaluada de forma segura. Las solicitudes que involucren datos sensibles serán derivadas al equipo de Seguridad de la Información para revisión manual.</p>
+        </div>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner">
+                <div class="spinner-ring"></div>
+                <div class="spinner-icon">
+                    <i class="fas fa-brain"></i>
+                </div>
+            </div>
+            <h3>Analizando tu solicitud...</h3>
+            <p id="loadingText">Evaluando la herramienta y el caso de uso</p>
+            <div class="loading-steps">
+                <div class="loading-step active" id="ls1">
+                    <i class="fas fa-check-circle"></i> Verificando herramienta en lista aprobada
+                </div>
+                <div class="loading-step" id="ls2">
+                    <i class="fas fa-circle"></i> Analizando caso de uso
+                </div>
+                <div class="loading-step" id="ls3">
+                    <i class="fas fa-circle"></i> Evaluando nivel de riesgo
+                </div>
+                <div class="loading-step" id="ls4">
+                    <i class="fas fa-circle"></i> Generando resultado
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
