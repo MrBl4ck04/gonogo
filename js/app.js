@@ -8,6 +8,18 @@
 let currentStep = 1;
 const totalSteps = 4;
 
+// Encapsulated state for last submission (replaces window._last* globals)
+const lastSubmission = {
+    formData: null,
+    analysis: null,
+    riskScore: null,
+    requestId: null
+};
+
+// Rate limiting: prevent rapid repeated submissions
+let lastSubmitTime = 0;
+const SUBMIT_COOLDOWN_MS = 5000;
+
 // ─────────────────────────────────────────
 // Navigation
 // ─────────────────────────────────────────
@@ -62,6 +74,7 @@ function validateStep(step) {
                   validateRequired('position', 'Ingresa tu cargo');
     } else if (step === 2) {
         isValid = validateRequired('aiTool', 'Ingresa el nombre de la herramienta') &&
+                  validateUrl('aiUrl', 'Ingresa una URL válida (ej: https://ejemplo.com)') &&
                   validateRequired('aiCategory', 'Selecciona una categoría');
     } else if (step === 3) {
         isValid = validateRequired('useCase', 'Describe el caso de uso') &&
@@ -95,6 +108,22 @@ function validateEmail(fieldId, message) {
         return false;
     }
     return true;
+}
+
+function validateUrl(fieldId, message) {
+    const field = document.getElementById(fieldId);
+    if (!field || !field.value.trim()) return true; // URL is optional
+    try {
+        const url = new URL(field.value.trim());
+        if (!['http:', 'https:'].includes(url.protocol)) {
+            showError(fieldId, message);
+            return false;
+        }
+        return true;
+    } catch {
+        showError(fieldId, message);
+        return false;
+    }
 }
 
 function validateCheckboxGroup(name, message) {
@@ -166,7 +195,24 @@ if (useCaseInput) {
 async function submitForm() {
     if (!validateStep(3)) return;
 
+    // Rate limiting
+    const now = Date.now();
+    if (now - lastSubmitTime < SUBMIT_COOLDOWN_MS) {
+        showToast('Por favor espera unos segundos antes de enviar nuevamente', 'error');
+        return;
+    }
+
+    // Confirmation dialog
     const formData = collectFormData();
+    const hasSensitive = formData.dataTypes.some(t =>
+        ['sensible', 'confidencial', 'financiero', 'personal'].includes(t)
+    );
+    const confirmMsg = hasSensitive
+        ? `Estás declarando datos sensibles (${formData.dataTypes.join(', ')}). ¿Deseas enviar la solicitud para "${formData.aiTool}"?`
+        : `¿Confirmas el envío de la solicitud para "${formData.aiTool}"?`;
+    if (!confirm(confirmMsg)) return;
+
+    lastSubmitTime = now;
     showLoading();
 
     try {
@@ -175,12 +221,21 @@ async function submitForm() {
         const preApproved = checkPreApproved(formData.aiTool);
 
         if (preApproved) {
-            await animateLoadingStep(2);
-            await animateLoadingStep(3);
-            await animateLoadingStep(4);
-            hideLoading();
-            showPreApprovedResult(preApproved, formData);
-            return;
+            // Even pre-approved tools must be reviewed if sensitive data is involved
+            const hasSensitiveData = formData.dataTypes.some(t =>
+                ['sensible', 'confidencial', 'financiero', 'personal'].includes(t)
+            );
+
+            if (!hasSensitiveData) {
+                await animateLoadingStep(2);
+                await animateLoadingStep(3);
+                await animateLoadingStep(4);
+                hideLoading();
+                clearFormDraft();
+                showPreApprovedResult(preApproved, formData);
+                return;
+            }
+            // If sensitive data → fall through to normal evaluation
         }
 
         // Step 2: Calculate risk score
@@ -201,11 +256,13 @@ async function submitForm() {
         await animateLoadingStep(4);
         await sleep(500);
         hideLoading();
+        clearFormDraft();
         showResult(analysis, formData, riskScore);
 
     } catch (error) {
         console.error('Error during evaluation:', error);
         hideLoading();
+        clearFormDraft();
         // Fallback to rule-based
         const riskScore = calculateRiskScore(formData);
         const analysis = getRuleBasedAnalysis(formData, riskScore);
@@ -256,6 +313,7 @@ function checkPreApproved(toolName) {
 
 function calculateRiskScore(formData) {
     let score = 0;
+    let maxLevelScore = 0;
     let maxLevel = 'bajo';
     const details = [];
 
@@ -264,7 +322,8 @@ function calculateRiskScore(formData) {
         const risk = CONFIG.dataRiskLevels[type];
         if (risk) {
             score += risk.score;
-            if (risk.score > CONFIG.dataRiskLevels[maxLevel]?.score || 0) {
+            if (risk.score > maxLevelScore) {
+                maxLevelScore = risk.score;
                 maxLevel = risk.level;
             }
             details.push({ type, level: risk.level, label: risk.label });
@@ -467,28 +526,35 @@ function getRuleBasedAnalysis(formData, riskScore) {
 function showPreApprovedResult(tool, formData) {
     goToStep(4);
     const step4 = document.getElementById('step4');
+    const requestId = generateRequestId();
+
+    // Store for email functions
+    lastSubmission.formData = formData;
+    lastSubmission.analysis = null;
+    lastSubmission.riskScore = null;
+    lastSubmission.requestId = requestId;
 
     step4.innerHTML = `
         <div class="result-container">
             <div class="result-icon go">
                 <i class="fas fa-check-circle"></i>
             </div>
-            <h2 class="go">${CONFIG.messages.preApprovedGo}</h2>
-            <p class="result-subtitle">${CONFIG.messages.preApprovedSubtitle}</p>
+            <h2 class="go">${escapeHtml(CONFIG.messages.preApprovedGo)}</h2>
+            <p class="result-subtitle">${escapeHtml(CONFIG.messages.preApprovedSubtitle)}</p>
 
             <div class="result-details">
                 <h3><i class="fas fa-file-alt"></i> Resumen de la Solicitud</h3>
                 <div class="detail-row">
                     <span class="detail-label">Solicitante</span>
-                    <span class="detail-value">${formData.fullName}</span>
+                    <span class="detail-value">${escapeHtml(formData.fullName)}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Departamento</span>
-                    <span class="detail-value">${formData.department}</span>
+                    <span class="detail-value">${escapeHtml(formData.department)}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Herramienta</span>
-                    <span class="detail-value">${tool.name}</span>
+                    <span class="detail-value">${escapeHtml(tool.name)}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Estado</span>
@@ -504,13 +570,13 @@ function showPreApprovedResult(tool, formData) {
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">ID Solicitud</span>
-                    <span class="detail-value">${generateRequestId()}</span>
+                    <span class="detail-value">${requestId}</span>
                 </div>
             </div>
 
             <div class="result-analysis">
                 <h3><i class="fas fa-info-circle"></i> Condiciones de Uso</h3>
-                <p>${tool.conditions}</p>
+                <p>${escapeHtml(tool.conditions)}</p>
             </div>
 
             <div class="result-note">
@@ -519,7 +585,7 @@ function showPreApprovedResult(tool, formData) {
             </div>
 
             <div class="result-actions">
-                <button class="btn btn-success" onclick="sendEmailNotification('go', null)">
+                <button class="btn btn-success" onclick="sendEmailNotification()">
                     <i class="fas fa-envelope"></i> Enviar Comprobante por Correo
                 </button>
                 <button class="btn btn-secondary" onclick="downloadPDF()">
@@ -657,7 +723,7 @@ function showResult(analysis, formData, riskScore) {
                     </button>
                 ` : ''}
                 ${isGo ? `
-                    <button class="btn btn-success" onclick="sendEmailNotification('go', null)">
+                    <button class="btn btn-success" onclick="sendEmailNotification()">
                         <i class="fas fa-envelope"></i> Enviar Comprobante
                     </button>
                 ` : ''}
@@ -672,10 +738,10 @@ function showResult(analysis, formData, riskScore) {
     `;
 
     // Store data for email functions
-    window._lastFormData = formData;
-    window._lastAnalysis = analysis;
-    window._lastRiskScore = riskScore;
-    window._lastRequestId = requestId;
+    lastSubmission.formData = formData;
+    lastSubmission.analysis = analysis;
+    lastSubmission.riskScore = riskScore;
+    lastSubmission.requestId = requestId;
 
     // If REVIEW, auto-send email to security team
     if (isReview) {
@@ -790,10 +856,10 @@ function sendViaMailto(toEmail, ccEmail, subject, body) {
 }
 
 async function sendToSecurityTeam() {
-    const formData = window._lastFormData || collectFormData();
-    const analysis = window._lastAnalysis || {};
-    const riskScore = window._lastRiskScore || {};
-    const requestId = window._lastRequestId || generateRequestId();
+    const formData = lastSubmission.formData || collectFormData();
+    const analysis = lastSubmission.analysis || {};
+    const riskScore = lastSubmission.riskScore || {};
+    const requestId = lastSubmission.requestId || generateRequestId();
 
     const subject = `[GO/NO-GO] Solicitud de Revisión - ${formData.aiTool} - ${requestId}`;
     const body = buildEmailBody(formData, analysis, riskScore, requestId, 'review');
@@ -815,9 +881,9 @@ async function sendToSecurityTeam() {
     }
 }
 
-async function sendEmailNotification(type) {
-    const formData = window._lastFormData || collectFormData();
-    const requestId = window._lastRequestId || generateRequestId();
+async function sendEmailNotification() {
+    const formData = lastSubmission.formData || collectFormData();
+    const requestId = lastSubmission.requestId || generateRequestId();
 
     const subject = `[GO/NO-GO] Solicitud Aprobada - ${formData.aiTool} - ${requestId}`;
     const body = buildEmailBody(formData, {}, {}, requestId, 'approved');
@@ -843,7 +909,37 @@ async function sendEmailNotification(type) {
 // ─────────────────────────────────────────
 
 function downloadPDF() {
-    window.print();
+    const resultEl = document.querySelector('#step4 .result-container');
+    if (!resultEl) {
+        window.print();
+        return;
+    }
+
+    // Use html2pdf.js if available, otherwise fall back to print
+    if (typeof html2pdf === 'undefined') {
+        window.print();
+        return;
+    }
+
+    const requestId = lastSubmission.requestId || 'GONG';
+    const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `${requestId}_GO-NOGO.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    // Clone the element to avoid modifying the visible DOM
+    const clone = resultEl.cloneNode(true);
+    // Hide action buttons in PDF
+    const actions = clone.querySelector('.result-actions');
+    if (actions) actions.style.display = 'none';
+
+    showToast('Generando PDF...', 'info');
+    html2pdf().set(opt).from(clone).save().then(() => {
+        showToast('PDF descargado exitosamente', 'success');
+    });
 }
 
 // ─────────────────────────────────────────
@@ -893,6 +989,73 @@ async function animateLoadingStep(stepNum) {
 }
 
 // ─────────────────────────────────────────
+// localStorage Persistence
+// ─────────────────────────────────────────
+const STORAGE_KEY = 'gonogo_form_draft';
+
+function saveFormDraft() {
+    try {
+        const fields = {};
+        ['fullName', 'email', 'department', 'position', 'aiTool', 'aiUrl',
+         'aiCategory', 'aiVersion', 'useCase', 'expectedBenefit', 'frequency',
+         'additionalNotes'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) fields[id] = el.value;
+        });
+        fields.dataTypes = Array.from(document.querySelectorAll('input[name="dataType"]:checked')).map(cb => cb.value);
+        const userScope = document.querySelector('input[name="userScope"]:checked');
+        fields.userScope = userScope ? userScope.value : '';
+        const payment = document.querySelector('input[name="requiresPayment"]:checked');
+        fields.requiresPayment = payment ? payment.value : '';
+        fields.currentStep = currentStep;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(fields));
+    } catch { /* localStorage may be unavailable */ }
+}
+
+function restoreFormDraft() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const fields = JSON.parse(raw);
+
+        ['fullName', 'email', 'department', 'position', 'aiTool', 'aiUrl',
+         'aiCategory', 'aiVersion', 'useCase', 'expectedBenefit', 'frequency',
+         'additionalNotes'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && fields[id]) el.value = fields[id];
+        });
+        if (fields.dataTypes) {
+            fields.dataTypes.forEach(val => {
+                const cb = document.querySelector(`input[name="dataType"][value="${val}"]`);
+                if (cb) cb.checked = true;
+            });
+        }
+        if (fields.userScope) {
+            const radio = document.querySelector(`input[name="userScope"][value="${fields.userScope}"]`);
+            if (radio) radio.checked = true;
+        }
+        if (fields.requiresPayment) {
+            const radio = document.querySelector(`input[name="requiresPayment"][value="${fields.requiresPayment}"]`);
+            if (radio) radio.checked = true;
+        }
+        // Update character counter
+        const useCaseEl = document.getElementById('useCase');
+        if (useCaseEl) {
+            document.getElementById('useCaseCount').textContent = useCaseEl.value.length;
+        }
+        // Trigger AI tool detection
+        const aiToolEl = document.getElementById('aiTool');
+        if (aiToolEl && aiToolEl.value) {
+            aiToolEl.dispatchEvent(new Event('input'));
+        }
+    } catch { /* ignore parse errors */ }
+}
+
+function clearFormDraft() {
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+}
+
+// ─────────────────────────────────────────
 // Utilities
 // ─────────────────────────────────────────
 
@@ -921,6 +1084,7 @@ function resetForm() {
     document.getElementById('gonogoForm').reset();
     document.getElementById('approvedBanner').style.display = 'none';
     document.getElementById('useCaseCount').textContent = '0';
+    clearFormDraft();
     goToStep(1);
 }
 
@@ -941,7 +1105,11 @@ function showToast(message, type = 'info') {
         animation: slideUp 0.3s ease;
         max-width: 400px;
     `;
-    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}" style="margin-right:8px;"></i>${message}`;
+    const icon = document.createElement('i');
+    icon.className = `fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}`;
+    icon.style.marginRight = '8px';
+    toast.appendChild(icon);
+    toast.appendChild(document.createTextNode(message));
     document.body.appendChild(toast);
 
     // Add animation keyframe
@@ -970,12 +1138,23 @@ function showToast(message, type = 'info') {
 document.addEventListener('DOMContentLoaded', () => {
     updateProgress();
 
-    // Warn if no AI API key configured
-    if (!CONFIG.ai.apiKey) {
+    // Restore form draft from localStorage
+    restoreFormDraft();
+
+    // Auto-save form on input changes
+    const form = document.getElementById('gonogoForm');
+    if (form) {
+        form.addEventListener('input', saveFormDraft);
+        form.addEventListener('change', saveFormDraft);
+    }
+
+    // Clear draft on successful submission (after result is shown)
+    // Draft is cleared via resetForm() or after showing result
+
+    // Log mode info
+    if (CONFIG.ai.provider === 'none' || !CONFIG.ai.apiKey) {
         console.info(
-            '%c⚡ GO/NO-GO: Modo sin IA activado\n' +
-            'Para habilitar análisis con IA, agrega tu API key gratuita de Gemini en js/config.js\n' +
-            'Obtén una gratis en: https://aistudio.google.com/apikey',
+            '%c⚡ GO/NO-GO: Modo basado en reglas activado',
             'color: #F7941D; font-weight: bold; font-size: 13px;'
         );
     }

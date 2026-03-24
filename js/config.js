@@ -61,49 +61,15 @@ const CONFIG = {
 
     // ─────────────────────────────────────────
     // Configuración de la IA de análisis
-    // Google Gemini API - Tier gratuito
-    // 15 requests/min, sin tarjeta de crédito
-    //
-    // Para obtener tu API key gratis:
-    // 1. Ve a https://aistudio.google.com/apikey
-    // 2. Crea una API key (gratis, sin tarjeta)
-    // 3. Pégala abajo
+    // Actualmente deshabilitada (modo reglas).
+    // Para habilitar en el futuro, descomentar
+    // y configurar provider + apiKey.
     // ─────────────────────────────────────────
     ai: {
-        provider: "openrouter", // "openrouter" | "gemini" | "none" (sin IA, solo reglas)
-        apiKey: "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",
-        model: "nvidia/nemotron-3-super-120b-a12b:free", // Modelo gratuito en OpenRouter (120B params)
-        // Prompt del sistema para el análisis
-        systemPrompt: `Eres un analista de seguridad de la información y gobernanza de IA de la empresa Red Enlace.
-Tu tarea es evaluar solicitudes de uso de herramientas de inteligencia artificial.
-
-CONTEXTO:
-- Las únicas herramientas pre-aprobadas son: ChatGPT y Google Gemini (para uso general sin datos sensibles)
-- La empresa maneja datos financieros y de transacciones
-- Se debe cumplir con regulaciones de protección de datos
-
-CRITERIOS DE EVALUACIÓN:
-1. SEGURIDAD: ¿La herramienta tiene políticas claras de privacidad? ¿Almacena datos de usuarios?
-2. PERTINENCIA: ¿El caso de uso es legítimo y beneficioso para el trabajo?
-3. RIESGO DE DATOS: ¿Los datos que se ingresarán son apropiados para una herramienta externa?
-4. ALTERNATIVAS: ¿Podría usarse una herramienta ya aprobada en su lugar?
-
-RESPONDE EN FORMATO JSON EXACTO (sin markdown, sin backticks):
-{
-    "decision": "GO" | "REVIEW" | "NOGO",
-    "riskLevel": "bajo" | "medio" | "alto" | "critico",
-    "analysis": "Análisis breve de 2-3 oraciones",
-    "reasons": ["razón 1", "razón 2", "razón 3"],
-    "recommendations": ["recomendación 1", "recomendación 2"],
-    "alternatives": "Herramientas alternativas ya aprobadas (si aplica)"
-}
-
-REGLAS:
-- Si involucra datos sensibles, personales, financieros o confidenciales → SIEMPRE "REVIEW" (revisión manual)
-- Si la herramienta es poco conocida o no tiene políticas claras → "REVIEW"
-- Si el caso de uso es claramente legítimo con datos públicos → puede ser "GO"
-- Si la herramienta tiene riesgos evidentes de seguridad → "NOGO"
-- En caso de duda, prefiere "REVIEW" sobre "GO"`
+        provider: "none", // "openrouter" | "gemini" | "none" (sin IA, solo reglas)
+        apiKey: "",
+        model: "",
+        systemPrompt: ""
     },
 
     // ─────────────────────────────────────────
