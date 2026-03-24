@@ -890,24 +890,33 @@ function downloadPDF() {
     }
 
     const requestId = lastSubmission.requestId || 'GONG';
+
+    // Hide action buttons before capture
+    const actions = resultEl.querySelector('.result-actions');
+    const prevDisplay = actions ? actions.style.display : '';
+    if (actions) actions.style.display = 'none';
+
     const opt = {
         margin: [10, 10, 10, 10],
         filename: `${requestId}_GO-NOGO.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    // Clone the element to avoid modifying the visible DOM
-    const clone = resultEl.cloneNode(true);
-    // Hide action buttons in PDF
-    const actions = clone.querySelector('.result-actions');
-    if (actions) actions.style.display = 'none';
-
     showToast('Generando PDF...', 'info');
-    html2pdf().set(opt).from(clone).save().then(() => {
-        showToast('PDF descargado exitosamente', 'success');
-    });
+    html2pdf().set(opt).from(resultEl).save()
+        .then(() => {
+            showToast('PDF descargado exitosamente', 'success');
+        })
+        .catch(() => {
+            showToast('Error al generar PDF, usando impresión del navegador', 'warning');
+            window.print();
+        })
+        .finally(() => {
+            // Restore action buttons
+            if (actions) actions.style.display = prevDisplay;
+        });
 }
 
 // ─────────────────────────────────────────
