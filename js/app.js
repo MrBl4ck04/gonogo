@@ -877,8 +877,8 @@ async function sendEmailNotification() {
 // ─────────────────────────────────────────
 
 function downloadPDF() {
-    const resultEl = document.querySelector('#step4 .result-container');
-    if (!resultEl) {
+    const originalEl = document.querySelector('#step4 .result-container');
+    if (!originalEl) {
         window.print();
         return;
     }
@@ -891,31 +891,55 @@ function downloadPDF() {
 
     const requestId = lastSubmission.requestId || 'GONG';
 
-    // Hide action buttons before capture
-    const actions = resultEl.querySelector('.result-actions');
-    const prevDisplay = actions ? actions.style.display : '';
-    if (actions) actions.style.display = 'none';
+    // Clone the result container to avoid UI flickering and viewport rendering issues
+    const clone = originalEl.cloneNode(true);
+    
+    // Create a temporary wrapper taking the element out of the active DOM layout
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'absolute';
+    wrapper.style.top = '0';
+    wrapper.style.left = '0';
+    wrapper.style.width = '800px'; 
+    wrapper.style.padding = '40px';
+    wrapper.style.background = '#ffffff';
+    wrapper.style.zIndex = '-9999';
+    wrapper.style.color = '#1f2937';
+    
+    // Remove the buttons from the clone so they don't appear in the PDF
+    const actions = clone.querySelector('.result-actions');
+    if (actions) actions.remove();
+
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
 
     const opt = {
-        margin: [10, 10, 10, 10],
+        margin: [15, 15, 15, 15],
         filename: `${requestId}_GO-NOGO.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
+        html2canvas: { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false, 
+            scrollY: 0,
+            windowWidth: 800
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     showToast('Generando PDF...', 'info');
-    html2pdf().set(opt).from(resultEl).save()
+    
+    html2pdf().set(opt).from(wrapper).save()
         .then(() => {
             showToast('PDF descargado exitosamente', 'success');
         })
-        .catch(() => {
+        .catch((err) => {
+            console.error('Error al generar PDF:', err);
             showToast('Error al generar PDF, usando impresión del navegador', 'warning');
             window.print();
         })
         .finally(() => {
-            // Restore action buttons
-            if (actions) actions.style.display = prevDisplay;
+            // Clean up the temporary wrapper
+            document.body.removeChild(wrapper);
         });
 }
 
