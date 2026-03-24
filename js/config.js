@@ -70,19 +70,26 @@ const CONFIG = {
         apiKey: "",
         model: "",
         systemPrompt: ""
-    },
+    // Configuración de análisis (Sistema de Reglas)
+    // ─────────────────────────────────────────
+    ai: {
+            provider: "none", // Desactivado para usar exclusivamente el motor de reglas
+            apiKey: "",
+            model: "",
+            SystemPrompt: ""
+        },
 
-    // ─────────────────────────────────────────
-    // Mensajes personalizables
-    // ─────────────────────────────────────────
-    messages: {
-        goTitle: "¡GO! — Solicitud Aprobada",
-        goSubtitle: "Tu solicitud ha sido aprobada automáticamente",
-        reviewTitle: "EN REVISIÓN — Derivado a Seguridad",
-        reviewSubtitle: "Tu solicitud requiere revisión del equipo de Seguridad de la Información",
-        nogoTitle: "NO-GO — Solicitud No Aprobada",
-        nogoSubtitle: "La herramienta no cumple con los criterios de seguridad requeridos",
-        preApprovedGo: "¡GO! — Herramienta Pre-Aprobada",
-        preApprovedSubtitle: "Esta herramienta ya está autorizada para uso en la empresa"
-    }
-};
+        // ─────────────────────────────────────────
+        // Mensajes personalizables
+        // ─────────────────────────────────────────
+        messages: {
+            goTitle: "¡GO! — Solicitud Aprobada",
+            goSubtitle: "Tu solicitud ha sido aprobada automáticamente",
+            reviewTitle: "EN REVISIÓN — Derivado a Seguridad",
+            reviewSubtitle: "Tu solicitud requiere revisión del equipo de Seguridad de la Información",
+            nogoTitle: "NO-GO — Solicitud No Aprobada",
+            nogoSubtitle: "La herramienta no cumple con los criterios de seguridad requeridos",
+            preApprovedGo: "¡GO! — Herramienta Pre-Aprobada",
+            preApprovedSubtitle: "Esta herramienta ya está autorizada para uso en la empresa"
+        }
+    };
