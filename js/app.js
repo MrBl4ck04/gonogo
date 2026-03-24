@@ -600,13 +600,13 @@ function showPreApprovedResult(tool, formData) {
             </div>
 
             <div class="result-actions">
-                <button class="btn btn-success" onclick="sendEmailNotification()">
+                <button type="button" class="btn btn-success" onclick="sendEmailNotification()">
                     <i class="fas fa-envelope"></i> Enviar Comprobante por Correo
                 </button>
-                <button class="btn btn-secondary" onclick="downloadPDF()">
+                <button type="button" class="btn btn-secondary" onclick="downloadPDF()">
                     <i class="fas fa-download"></i> Descargar Comprobante
                 </button>
-                <button class="btn btn-secondary" onclick="resetForm()">
+                <button type="button" class="btn btn-secondary" onclick="resetForm()">
                     <i class="fas fa-plus"></i> Nueva Solicitud
                 </button>
             </div>
@@ -733,19 +733,19 @@ function showResult(analysis, formData, riskScore) {
 
             <div class="result-actions">
                 ${isReview ? `
-                    <button class="btn btn-warning" onclick="sendToSecurityTeam()">
+                    <button type="button" class="btn btn-warning" onclick="sendToSecurityTeam()">
                         <i class="fas fa-paper-plane"></i> Enviar a Seguridad de la Información
                     </button>
                 ` : ''}
                 ${isGo ? `
-                    <button class="btn btn-success" onclick="sendEmailNotification()">
+                    <button type="button" class="btn btn-success" onclick="sendEmailNotification()">
                         <i class="fas fa-envelope"></i> Enviar Comprobante
                     </button>
                 ` : ''}
-                <button class="btn btn-secondary" onclick="downloadPDF()">
+                <button type="button" class="btn btn-secondary" onclick="downloadPDF()">
                     <i class="fas fa-download"></i> Descargar Comprobante
                 </button>
-                <button class="btn btn-secondary" onclick="resetForm()">
+                <button type="button" class="btn btn-secondary" onclick="resetForm()">
                     <i class="fas fa-plus"></i> Nueva Solicitud
                 </button>
             </div>
