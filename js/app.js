@@ -228,32 +228,15 @@ async function submitForm() {
         await animateLoadingStep(2);
         const preApproved = checkPreApproved(formData.aiTool);
 
-<<<<<<< HEAD
-        if (preApproved) {
-            // Even pre-approved tools must be reviewed if sensitive data is involved
-            const hasSensitiveData = formData.dataTypes.some(t =>
-                ['sensible', 'confidencial', 'financiero', 'personal'].includes(t)
-            );
-
-            if (!hasSensitiveData) {
-                await animateLoadingStep(2);
-                await animateLoadingStep(3);
-                await animateLoadingStep(4);
-                hideLoading();
-                clearFormDraft();
-                showPreApprovedResult(preApproved, formData);
-                return;
-            }
-            // If sensitive data → fall through to normal evaluation
-=======
-        // ¡REGLA ROBUSTA 1!: Una herramienta pre-aprobada NO puede auto-aprobarse si involucra datos sensibles o si su puntaje total exige revisión manual.
+        // Herramienta pre-aprobada: solo GO automático si NO hay datos sensibles
+        // Y el puntaje de riesgo total no exige revisión manual.
         if (preApproved && !hasSensitiveData && riskScore.totalScore < CONFIG.thresholds.manualReviewMinScore) {
             await animateLoadingStep(3);
             await animateLoadingStep(4);
             hideLoading();
+            clearFormDraft();
             showPreApprovedResult(preApproved, formData);
             return;
->>>>>>> e8e7b74bf2173023e12c8d80566f5596ac53368e
         }
 
         // Paso 3: Análisis basado en reglas (o IA si estuviera activa)
